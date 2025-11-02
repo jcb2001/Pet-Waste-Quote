@@ -1,0 +1,5 @@
+{
+  "name": "Pet Waste Removal Quote Calculator",
+  "description": "An embeddable web app for instantly calculating a price quote for pet waste removal services based on the number of pets, yard size, and service frequency.",
+  "requestFramePermissions": []
+}
