@@ -1,39 +1,910 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pet Waste Removal Quote Calculator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      @keyframes pulse {
-        0%, 100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        50% {
-          transform: scale(1.05);
-          opacity: 0.9;
-        }
-      }
-      .animate-pulse-quick {
-        animation: pulse 0.5s ease-in-out;
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+<!--
+  INSTRUCTIONS FOR GITHUB & WORDPRESS:
+  1. Create a file named index.html on your computer.
+  2. Copy and paste the entire content of this file into it.
+  3. Upload this single index.html file to a public GitHub repository.
+  4. Enable GitHub Pages for that repository to get a public URL.
+  5. In WordPress, use an "Custom HTML" block and embed the app using an <iframe> pointing to your GitHub Pages URL.
+  
+  Example iFrame code for WordPress:
+  <iframe src="https://your-github-username.github.io/your-repo-name/" style="width: 100%; height: 950px; border: none; display: block; margin: 0 auto; max-width: 672px;"></iframe>
+-->
+<div id="root"></div>
+
+<!-- Adds Tailwind CSS for styling -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  /* Custom animation for the quote display */
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
   }
-}
+  .animate-pulse-quick {
+    animation: pulse 0.5s ease-in-out;
+  }
+  /* Custom font to match a more premium feel */
+  body, html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  }
+</style>
+
+<script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18.2.0",
+      "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+      "@emailjs/browser": "https://esm.sh/@emailjs/browser@4.3.3"
+    }
+  }
 </script>
-</head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
-</html>
+
+<script type="module">
+  import React, { useState, useEffect, useCallback } from 'react';
+  import ReactDOM from 'react-dom/client';
+  import emailjs from '@emailjs/browser';
+
+  // --- From types.ts ---
+  const ServiceFrequency = {
+    ONCE_A_WEEK: 'ONCE_A_WEEK',
+    TWICE_A_WEEK: 'TWICE_A_WEEK',
+    EVERY_OTHER_WEEK: 'EVERY_OTHER_WEEK',
+    ONE_TIME: 'ONE_TIME',
+  };
+
+  const YardSize = {
+    SMALL: 'SMALL',
+    MEDIUM: 'MEDIUM',
+    LARGE: 'LARGE',
+    EXTRA_LARGE: 'EXTRA_LARGE',
+  };
+
+  // --- From config.ts ---
+  const EMAILJS_CONFIG = {
+    SERVICE_ID: 'service_usjn83s',
+    TEMPLATE_ID: 'template_2qmwxac',
+    PUBLIC_KEY: '3cqMeorDlfyf_cYgg',
+  };
+
+  // --- From constants.ts ---
+  const PRICING = {
+    [ServiceFrequency.TWICE_A_WEEK]: {
+      prices: { 1: 11, 2: 13, 3: 15, 4: 17 },
+      maxDogs: 4,
+    },
+    [ServiceFrequency.ONCE_A_WEEK]: {
+      prices: { 1: 14, 2: 16, 3: 20, 4: 24 },
+      maxDogs: 4,
+    },
+    [ServiceFrequency.EVERY_OTHER_WEEK]: {
+      prices: { 1: 20, 2: 24, 3: 28, 4: 32 },
+      maxDogs: 4,
+    },
+    [ServiceFrequency.ONE_TIME]: {
+      prices: { 1: 45, 2: 55, 3: 60, 4: 65 },
+      maxDogs: 4,
+    },
+  };
+
+  const YARD_SIZE_MULTIPLIER = {
+    [YardSize.SMALL]: 1.0,
+    [YardSize.MEDIUM]: 1.2,
+    [YardSize.LARGE]: 1.5,
+    [YardSize.EXTRA_LARGE]: 2.0,
+  };
+
+  const WEEKS_IN_MONTH = 4;
+
+  const FREQUENCY_OPTIONS = [
+    { value: ServiceFrequency.ONCE_A_WEEK, label: 'Weekly Service' },
+    { value: ServiceFrequency.TWICE_A_WEEK, label: 'Twice Weekly' },
+    { value: ServiceFrequency.EVERY_OTHER_WEEK, label: 'Bi-Weekly' },
+    { value: ServiceFrequency.ONE_TIME, label: 'One-Time Clean' },
+  ];
+
+  const YARD_SIZE_OPTIONS = [
+    { value: YardSize.SMALL, label: 'Small', description: '< 1/8 acre' },
+    { value: YardSize.MEDIUM, label: 'Medium', description: '1/8-1/4 acre' },
+    { value: YardSize.LARGE, label: 'Large', description: '1/4-1/2 acre' },
+    { value: YardSize.EXTRA_LARGE, label: 'X-Large', description: '> 1/2 acre' },
+  ];
+
+  // --- From components/Spinner.tsx ---
+  const Spinner = ({ className = 'w-6 h-6' }) => {
+    return React.createElement(
+      'svg', {
+        className: `animate-spin ${className}`,
+        xmlns: 'http://www.w3.org/2000/svg',
+        fill: 'none',
+        viewBox: '0 0 24 24'
+      },
+      React.createElement('circle', {
+        className: 'opacity-25',
+        cx: '12',
+        cy: '12',
+        r: '10',
+        stroke: 'currentColor',
+        strokeWidth: '4'
+      }),
+      React.createElement('path', {
+        className: 'opacity-75',
+        fill: 'currentColor',
+        d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+      })
+    );
+  };
+
+  // --- From components/BookingModal.tsx ---
+  const BookingModal = ({ isOpen, onClose, onSubmit, quote, formData, isLoading, bookingResult }) => {
+    const [details, setDetails] = useState({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      notes: '',
+    });
+
+    useEffect(() => {
+      if (!isOpen) {
+        setDetails({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          notes: '',
+        });
+      }
+    }, [isOpen]);
+
+    const handleChange = (e) => {
+      const { name, value } = e.target;
+      setDetails(prev => ({ ...prev, [name]: value
+      }));
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      onSubmit(details);
+    };
+
+    if (!isOpen) return null;
+
+    const formatCurrency = (amount) => {
+      if (amount === null || isNaN(amount)) return 'N/A';
+      return amount.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      });
+    };
+
+    const CloseIcon = ({ className }) => React.createElement('svg', {
+      className,
+      xmlns: 'http://www.w3.org/2000/svg',
+      fill: 'none',
+      viewBox: '0 0 24 24',
+      strokeWidth: 2,
+      stroke: 'currentColor'
+    }, React.createElement('path', {
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      d: 'M6 18L18 6M6 6l12 12'
+    }));
+    const SuccessIcon = ({ className }) => React.createElement('svg', {
+      className,
+      xmlns: 'http://www.w3.org/2000/svg',
+      fill: 'none',
+      viewBox: '0 0 24 24',
+      strokeWidth: '1.5',
+      stroke: 'currentColor'
+    }, React.createElement('path', {
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      d: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+    }));
+
+    const frequencyLabel = FREQUENCY_OPTIONS.find(f => f.value === formData.frequency)?.label;
+    const isOneTime = formData.frequency === ServiceFrequency.ONE_TIME;
+    const displayPrice = isOneTime ? quote.totalOneTime : quote.monthly;
+    const inputClasses = "block w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-green-500 focus:outline-none focus:ring-0 transition-colors duration-200 sm:text-sm";
+    const labelClasses = "block text-sm font-semibold text-slate-700 mb-1.5";
+
+    const renderContent = () => {
+      if (isLoading) {
+        return React.createElement('div', {
+            className: 'text-center p-12'
+          },
+          React.createElement(Spinner, {
+            className: 'w-12 h-12 text-green-500 mx-auto'
+          }),
+          React.createElement('p', {
+            className: 'mt-4 text-lg font-semibold text-slate-700'
+          }, 'Processing your booking...'),
+          React.createElement('p', {
+            className: 'text-slate-500'
+          }, 'Please wait a moment.')
+        );
+      }
+
+      if (bookingResult) {
+        return React.createElement('div', {
+            className: 'p-6 sm:p-8 text-center'
+          },
+          React.createElement(SuccessIcon, {
+            className: 'w-16 h-16 text-green-500 mx-auto mb-4'
+          }),
+          React.createElement('h3', {
+            className: 'text-2xl font-bold text-slate-800 mb-2'
+          }, 'Request Sent!'),
+          React.createElement('p', {
+            className: 'text-slate-600 mb-6'
+          }, "Thank you! We've received your request and will be in touch shortly to confirm."),
+          React.createElement('div', {
+            className: 'bg-slate-50 border border-slate-200 rounded-lg p-4 text-left whitespace-pre-wrap text-sm text-slate-700 font-mono overflow-x-auto'
+          }, bookingResult),
+          React.createElement('button', {
+            onClick: onClose,
+            className: 'mt-8 w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500'
+          }, 'Done')
+        );
+      }
+
+      return React.createElement('form', {
+          onSubmit: handleSubmit,
+          className: 'p-6 sm:p-8 space-y-6'
+        },
+        React.createElement('div', {
+            className: 'grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6'
+          },
+          React.createElement('div', null,
+            React.createElement('label', {
+              htmlFor: 'firstName',
+              className: labelClasses
+            }, 'First Name'),
+            React.createElement('input', {
+              type: 'text',
+              id: 'firstName',
+              name: 'firstName',
+              onChange: handleChange,
+              value: details.firstName,
+              required: true,
+              className: inputClasses
+            })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', {
+              htmlFor: 'lastName',
+              className: labelClasses
+            }, 'Last Name'),
+            React.createElement('input', {
+              type: 'text',
+              id: 'lastName',
+              name: 'lastName',
+              onChange: handleChange,
+              value: details.lastName,
+              required: true,
+              className: inputClasses
+            })
+          )
+        ),
+        React.createElement('div', null,
+          React.createElement('label', {
+            htmlFor: 'email',
+            className: labelClasses
+          }, 'Email Address'),
+          React.createElement('input', {
+            type: 'email',
+            id: 'email',
+            name: 'email',
+            onChange: handleChange,
+            value: details.email,
+            required: true,
+            className: inputClasses
+          })
+        ),
+        React.createElement('div', null,
+          React.createElement('label', {
+            htmlFor: 'phone',
+            className: labelClasses
+          }, 'Phone Number'),
+          React.createElement('input', {
+            type: 'tel',
+            id: 'phone',
+            name: 'phone',
+            onChange: handleChange,
+            value: details.phone,
+            required: true,
+            className: inputClasses
+          })
+        ),
+        React.createElement('div', null,
+          React.createElement('label', {
+            htmlFor: 'address',
+            className: labelClasses
+          }, 'Street Address'),
+          React.createElement('input', {
+            type: 'text',
+            id: 'address',
+            name: 'address',
+            onChange: handleChange,
+            value: details.address,
+            required: true,
+            className: inputClasses
+          })
+        ),
+        React.createElement('div', {
+            className: 'grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6'
+          },
+          React.createElement('div', null, React.createElement('label', {
+            htmlFor: 'city',
+            className: labelClasses
+          }, 'City'), React.createElement('input', {
+            type: 'text',
+            id: 'city',
+            name: 'city',
+            onChange: handleChange,
+            value: details.city,
+            required: true,
+            className: inputClasses
+          })),
+          React.createElement('div', null, React.createElement('label', {
+            htmlFor: 'state',
+            className: labelClasses
+          }, 'State'), React.createElement('input', {
+            type: 'text',
+            id: 'state',
+            name: 'state',
+            onChange: handleChange,
+            value: details.state,
+            required: true,
+            className: inputClasses
+          })),
+          React.createElement('div', null, React.createElement('label', {
+            htmlFor: 'zip',
+            className: labelClasses
+          }, 'ZIP Code'), React.createElement('input', {
+            type: 'text',
+            id: 'zip',
+            name: 'zip',
+            onChange: handleChange,
+            value: details.zip,
+            required: true,
+            className: inputClasses
+          }))
+        ),
+        React.createElement('div', null,
+          React.createElement('label', {
+            htmlFor: 'notes',
+            className: labelClasses
+          }, 'Notes ', React.createElement('span', {
+            className: 'text-slate-500 font-medium'
+          }, '(optional)')),
+          React.createElement('textarea', {
+            id: 'notes',
+            name: 'notes',
+            placeholder: "e.g., gate code, dog's name, etc.",
+            rows: 3,
+            onChange: handleChange,
+            value: details.notes,
+            className: inputClasses
+          })
+        ),
+        React.createElement('div', {
+            className: 'pt-4'
+          },
+          React.createElement('button', {
+            type: 'submit',
+            className: 'w-full flex justify-center bg-green-500 hover:bg-green-600 text-white font-bold text-lg py-3 px-4 rounded-lg shadow-md transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50'
+          }, 'Confirm & Book Service'),
+          React.createElement('button', {
+            type: 'button',
+            onClick: onClose,
+            className: 'w-full text-center text-sm text-slate-600 hover:text-slate-800 mt-4 font-medium'
+          }, 'Cancel')
+        )
+      );
+    };
+
+    return React.createElement('div', {
+        className: 'fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 transition-opacity duration-300',
+        role: 'dialog',
+        'aria-modal': 'true'
+      },
+      React.createElement('div', {
+          className: 'bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col transform transition-all duration-300 scale-100'
+        },
+        React.createElement('header', {
+            className: 'p-4 sm:p-5 border-b border-slate-200 bg-slate-50 rounded-t-xl sticky top-0 z-10'
+          },
+          React.createElement('div', {
+              className: 'flex justify-between items-center'
+            },
+            React.createElement('div', null,
+              React.createElement('h2', {
+                className: 'text-xl font-bold text-slate-800'
+              }, 'Complete Your Booking'),
+              React.createElement('p', {
+                className: 'text-sm text-slate-500 mt-1'
+              }, `${frequencyLabel}: `, React.createElement('span', {
+                className: 'font-semibold text-slate-700'
+              }, `${formatCurrency(displayPrice)} ${isOneTime ? '' : 'est. / month (taxes not calculated)'}`))
+            ),
+            React.createElement('button', {
+                onClick: onClose,
+                className: 'p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500',
+                'aria-label': 'Close'
+              },
+              React.createElement(CloseIcon, {
+                className: 'w-6 h-6'
+              })
+            )
+          )
+        ),
+        React.createElement('div', {
+          className: 'overflow-y-auto'
+        }, renderContent())
+      )
+    );
+  };
+
+  // --- From components/Footer.tsx ---
+  const Footer = () => {
+    return React.createElement(
+      'footer', {
+        className: 'text-center mt-8 pb-4'
+      },
+      React.createElement(
+        'p', {
+          className: 'text-sm text-slate-500'
+        },
+        `© ${new Date().getFullYear()} Pooper Scooper Inc. All rights reserved.`
+      )
+    );
+  };
+
+  // --- From components/QuoteDisplay.tsx ---
+  const QuoteDisplay = ({ quote, onBookNow }) => {
+    if (!quote) return null;
+
+    const formatCurrency = (amount) => {
+      if (amount === null || isNaN(amount)) return '';
+      return amount.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD'
+      });
+    };
+
+    const isOneTime = quote.frequency === ServiceFrequency.ONE_TIME;
+    const quoteKey = [quote.monthly, quote.totalOneTime].join('-');
+
+    return React.createElement('div', {
+        className: 'bg-gradient-to-br from-slate-800 to-slate-900 text-white p-6 sm:p-8'
+      },
+      React.createElement('h2', {
+        className: 'text-xl font-semibold text-green-400 mb-4 text-center'
+      }, 'Your Instant Quote'),
+      React.createElement('div', {
+          key: quoteKey,
+          className: 'text-center mb-6 animate-pulse-quick'
+        },
+        isOneTime ?
+        React.createElement(React.Fragment, null,
+          React.createElement('p', {
+            className: 'text-4xl sm:text-5xl font-bold tracking-tight'
+          }, formatCurrency(quote.totalOneTime)),
+          React.createElement('p', {
+            className: 'text-slate-300 mt-1'
+          }, 'For a one-time clean')
+        ) :
+        React.createElement(React.Fragment, null,
+          React.createElement('p', {
+            className: 'text-4xl sm:text-5xl font-bold tracking-tight'
+          }, formatCurrency(quote.monthly)),
+          React.createElement('p', {
+            className: 'text-slate-300 mt-1'
+          }, 'Estimated per month (taxes not calculated)'),
+          React.createElement('p', {
+            className: 'text-lg text-slate-200 mt-2'
+          }, `${formatCurrency(quote.perVisit)} / visit`)
+        )
+      ),
+      React.createElement('div', {
+          className: 'mt-8'
+        },
+        React.createElement('button', {
+          onClick: onBookNow,
+          className: 'w-full bg-green-500 hover:bg-green-600 text-white font-bold text-lg py-3 px-6 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50'
+        }, 'Book Your Service Now'),
+        React.createElement('p', {
+          className: 'text-xs text-slate-400 mt-3 text-center'
+        }, 'No contracts, cancel anytime.')
+      )
+    );
+  };
+
+  // --- From components/QuoteForm.tsx ---
+  const QuoteForm = ({ formData, onFormChange, onReset }) => {
+    const handleDogChange = (change) => {
+      const maxDogs = PRICING[formData.frequency].maxDogs;
+      const newNumDogs = formData.numDogs + change;
+      if (newNumDogs >= 1 && newNumDogs <= maxDogs) {
+        onFormChange({
+          numDogs: newNumDogs
+        });
+      }
+    };
+
+    const maxDogsForCurrentFrequency = PRICING[formData.frequency].maxDogs;
+
+    const MinusIcon = ({ className }) => React.createElement('svg', {
+      className,
+      xmlns: 'http://www.w3.org/2000/svg',
+      fill: 'none',
+      viewBox: '0 0 24 24',
+      strokeWidth: 2.5,
+      stroke: 'currentColor'
+    }, React.createElement('path', {
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      d: 'M18 12H6'
+    }));
+    const PlusIcon = ({ className }) => React.createElement('svg', {
+      className,
+      xmlns: 'http://www.w3.org/2000/svg',
+      fill: 'none',
+      viewBox: '0 0 24 24',
+      strokeWidth: 2.5,
+      stroke: 'currentColor'
+    }, React.createElement('path', {
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+      d: 'M12 6v12m6-6H6'
+    }));
+
+    return React.createElement('form', {
+        className: 'space-y-6 sm:space-y-8',
+        onSubmit: (e) => e.preventDefault()
+      },
+      React.createElement('div', null,
+        React.createElement('label', {
+          id: 'numDogs-label',
+          className: 'block text-lg font-semibold text-slate-800 mb-2'
+        }, '1. How many dogs do you have?'),
+        React.createElement('div', {
+            className: 'relative mt-2 flex items-center gap-4'
+          },
+          React.createElement('button', {
+            type: 'button',
+            onClick: () => handleDogChange(-1),
+            disabled: formData.numDogs <= 1,
+            'aria-label': 'Decrease number of dogs',
+            className: 'p-2 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all'
+          }, React.createElement(MinusIcon, {
+            className: 'w-6 h-6'
+          })),
+          React.createElement('span', {
+            className: 'text-2xl font-bold text-slate-900 w-12 text-center tabular-nums',
+            'aria-live': 'polite',
+            'aria-labelledby': 'numDogs-label'
+          }, formData.numDogs),
+          React.createElement('button', {
+            type: 'button',
+            onClick: () => handleDogChange(1),
+            disabled: formData.numDogs >= maxDogsForCurrentFrequency,
+            'aria-label': 'Increase number of dogs',
+            className: 'p-2 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all'
+          }, React.createElement(PlusIcon, {
+            className: 'w-6 h-6'
+          }))
+        )
+      ),
+      React.createElement('div', null,
+        React.createElement('h3', {
+          className: 'block text-lg font-semibold text-slate-800 mb-3'
+        }, '2. What is your yard size?'),
+        React.createElement('div', {
+            className: 'grid grid-cols-2 md:grid-cols-4 gap-3'
+          },
+          YARD_SIZE_OPTIONS.map(option => React.createElement('label', {
+              key: option.value,
+              className: `relative block p-3 border-2 rounded-lg cursor-pointer transition-all text-center ${formData.yardSize === option.value ? 'bg-green-50 border-green-500 ring-2 ring-green-500' : 'bg-white border-slate-300 hover:border-slate-400'}`
+            },
+            React.createElement('input', {
+              type: 'radio',
+              name: 'yardSize',
+              value: option.value,
+              checked: formData.yardSize === option.value,
+              onChange: () => onFormChange({
+                yardSize: option.value
+              }),
+              className: 'sr-only'
+            }),
+            React.createElement('span', {
+              className: 'block font-semibold text-slate-800'
+            }, option.label),
+            React.createElement('span', {
+              className: 'block text-sm text-slate-500'
+            }, option.description)
+          ))
+        )
+      ),
+      React.createElement('div', null,
+        React.createElement('h3', {
+          className: 'block text-lg font-semibold text-slate-800 mb-3'
+        }, '3. How often would you like service?'),
+        React.createElement('div', {
+            className: 'space-y-3'
+          },
+          FREQUENCY_OPTIONS.map(option => {
+            const pricingInfo = PRICING[option.value];
+            const isDisabled = formData.numDogs > pricingInfo.maxDogs;
+            return React.createElement('label', {
+                key: option.value,
+                className: `relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${formData.frequency === option.value ? 'bg-green-50 border-green-500 ring-2 ring-green-500' : 'bg-white border-slate-300 hover:border-slate-400'} ${isDisabled ? 'opacity-50 bg-slate-100 cursor-not-allowed' : ''}`
+              },
+              React.createElement('input', {
+                type: 'radio',
+                name: 'frequency',
+                value: option.value,
+                checked: formData.frequency === option.value,
+                onChange: () => onFormChange({
+                  frequency: option.value
+                }),
+                className: 'sr-only',
+                disabled: isDisabled
+              }),
+              React.createElement('span', {
+                className: 'font-semibold text-slate-800'
+              }, option.label),
+              isDisabled && React.createElement('span', {
+                className: 'ml-auto text-sm text-slate-500 text-right'
+              }, `Max ${pricingInfo.maxDogs} dogs`)
+            );
+          })
+        )
+      ),
+      React.createElement('div', {
+          className: 'pt-4 text-center'
+        },
+        React.createElement('button', {
+          type: 'button',
+          onClick: onReset,
+          className: 'text-sm font-semibold text-slate-600 hover:text-slate-800 underline transition-colors'
+        }, 'Start Over')
+      )
+    );
+  };
+
+  // --- From components/Header.tsx ---
+  const Header = () => {
+    return React.createElement(
+      'header', {
+        className: 'text-center'
+      },
+      React.createElement('h1', {
+        className: 'text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight'
+      }, 'Instant Quote'),
+      React.createElement('p', {
+        className: 'mt-2 text-lg text-slate-600'
+      }, 'For Pet Waste Removal Services')
+    );
+  };
+
+  // --- From App.tsx ---
+  const App = () => {
+    const initialFormData = {
+      numDogs: 1,
+      yardSize: YardSize.SMALL,
+      frequency: ServiceFrequency.ONCE_A_WEEK,
+    };
+    const [formData, setFormData] = useState(initialFormData);
+    const [quote, setQuote] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBooking, setIsBooking] = useState(false);
+    const [bookingResult, setBookingResult] = useState(null);
+
+    const calculateQuote = useCallback(() => {
+      const {
+        frequency,
+        numDogs,
+        yardSize
+      } = formData;
+      const pricingInfo = PRICING[frequency];
+      if (numDogs > pricingInfo.maxDogs) {
+        setQuote(null);
+        return;
+      }
+      const basePerVisitCost = pricingInfo.prices[numDogs] ?? 0;
+      const yardMultiplier = YARD_SIZE_MULTIPLIER[yardSize];
+      const serviceCost = basePerVisitCost * yardMultiplier;
+      let perVisitCost = serviceCost;
+      let weeklyRate = null;
+      let monthlyRate = null;
+
+      if (frequency !== ServiceFrequency.ONE_TIME) {
+        switch (frequency) {
+          case ServiceFrequency.ONCE_A_WEEK:
+            weeklyRate = perVisitCost;
+            break;
+          case ServiceFrequency.TWICE_A_WEEK:
+            weeklyRate = perVisitCost * 2;
+            break;
+          case ServiceFrequency.EVERY_OTHER_WEEK:
+            weeklyRate = perVisitCost / 2;
+            break;
+        }
+        if (weeklyRate !== null) monthlyRate = weeklyRate * WEEKS_IN_MONTH;
+      }
+      
+      const oneTimeTotal = frequency === ServiceFrequency.ONE_TIME ? perVisitCost : null;
+
+      const newQuote = {
+        perVisit: frequency !== ServiceFrequency.ONE_TIME ? perVisitCost : null,
+        totalOneTime: oneTimeTotal,
+        monthly: monthlyRate,
+        frequency: frequency,
+      };
+      setQuote(newQuote);
+    }, [formData]);
+
+    useEffect(() => {
+      calculateQuote();
+    }, [calculateQuote]);
+
+    const handleFormChange = (newFormData) => {
+      const updatedFormData = { ...formData, ...newFormData };
+
+      // If numDogs changes, ensure it doesn't exceed the max for the selected frequency
+      const freq = updatedFormData.frequency;
+      const maxDogs = PRICING[freq].maxDogs;
+      if (updatedFormData.numDogs > maxDogs) {
+          updatedFormData.numDogs = maxDogs;
+      }
+
+      setFormData(updatedFormData);
+    };
+
+    const handleReset = () => {
+      setFormData(initialFormData);
+    };
+
+    const handleOpenModal = () => setIsModalOpen(true);
+    const handleCloseModal = () => {
+      setIsModalOpen(false);
+      setTimeout(() => {
+        setIsBooking(false);
+        setBookingResult(null);
+      }, 300);
+    };
+
+    const handleBookingSubmit = async (bookingDetails) => {
+      if (!quote) return;
+      setIsBooking(true);
+      setBookingResult(null);
+
+      if (!EMAILJS_CONFIG.SERVICE_ID || !EMAILJS_CONFIG.TEMPLATE_ID || !EMAILJS_CONFIG.PUBLIC_KEY || EMAILJS_CONFIG.SERVICE_ID === 'YOUR_SERVICE_ID') {
+        setBookingResult("Booking system not configured. Please contact administrator.");
+        setIsBooking(false);
+        return;
+      }
+
+      try {
+        const frequencyLabel = FREQUENCY_OPTIONS.find(opt => opt.value === formData.frequency)?.label;
+        const yardSizeLabel = YARD_SIZE_OPTIONS.find(opt => opt.value === formData.yardSize)?.label;
+
+        const summaryText = `New Service Request Confirmation
+================================
+
+Customer Details:
+-----------------
+- Name: ${bookingDetails.firstName} ${bookingDetails.lastName}
+- Email: ${bookingDetails.email}
+- Phone: ${bookingDetails.phone}
+- Address: ${bookingDetails.address}, ${bookingDetails.city}, ${bookingDetails.state} ${bookingDetails.zip}
+
+Service Details:
+----------------
+- Number of Dogs: ${formData.numDogs}
+- Yard Size: ${yardSizeLabel}
+- Service Frequency: ${frequencyLabel}
+
+Quote Summary:
+--------------
+- Per Visit: ${quote.perVisit ? `$${quote.perVisit.toFixed(2)}` : 'N/A'}
+- Monthly Estimate: ${quote.monthly ? `$${quote.monthly.toFixed(2)}` : 'N/A'}
+- One-Time Cleanup Cost: ${quote.totalOneTime ? `$${quote.totalOneTime.toFixed(2)}` : 'N/A'}
+
+Customer Notes:
+---------------
+- ${bookingDetails.notes || 'No notes provided.'}
+`;
+
+        const templateParams = {
+          customer_name: `${bookingDetails.firstName} ${bookingDetails.lastName}`,
+          customer_email: bookingDetails.email,
+          summary: summaryText,
+        };
+
+        await emailjs.send(
+          EMAILJS_CONFIG.SERVICE_ID,
+          EMAILJS_CONFIG.TEMPLATE_ID,
+          templateParams, {
+            publicKey: EMAILJS_CONFIG.PUBLIC_KEY
+          }
+        );
+
+        setBookingResult(summaryText);
+      } catch (error) {
+        console.error("Error during booking process:", error);
+        let errorMessage = "An unknown error occurred.";
+        if (typeof error === 'object' && error !== null && 'text' in error) {
+          errorMessage = `EmailJS Error: ${error.text}`
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        setBookingResult(`We're sorry, there was an error submitting your request. Please try again later.\n\nDetails: ${errorMessage}`);
+      } finally {
+        setIsBooking(false);
+      }
+    };
+
+    return React.createElement('div', {
+        className: 'bg-slate-50 font-sans antialiased text-slate-800'
+      },
+      React.createElement('div', {
+          className: 'container mx-auto p-4 sm:p-6 max-w-2xl'
+        },
+        React.createElement(Header),
+        React.createElement('main', {
+            className: 'bg-white rounded-xl shadow-lg overflow-hidden mt-6 sm:mt-8'
+          },
+          React.createElement('div', {
+              className: 'p-5 sm:p-8'
+            },
+            React.createElement(QuoteForm, {
+              formData,
+              onFormChange: handleFormChange,
+              onReset: handleReset
+            })
+          ),
+          quote && React.createElement(QuoteDisplay, {
+            quote,
+            onBookNow: handleOpenModal
+          })
+        )
+      ),
+      quote && React.createElement(BookingModal, {
+        isOpen: isModalOpen,
+        onClose: handleCloseModal,
+        onSubmit: handleBookingSubmit,
+        quote,
+        formData,
+        isLoading: isBooking,
+        bookingResult
+      })
+    );
+  };
+
+  // --- Final Render Step ---
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    console.error("Fatal Error: Root element #root not found.");
+  } else {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(React.createElement(React.StrictMode, null, React.createElement(App)));
+  }
+</script>
