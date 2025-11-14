@@ -6,25 +6,47 @@
     <title>Pet Waste Removal Quote Calculator</title>
 
     <!--
-      INSTRUCTIONS FOR GITHUB & WORDPRESS:
-      1. Create a file named index.html on your computer.
-      2. Copy and paste the entire content of this file into it.
-      3. Upload this single index.html file to a public GitHub repository.
-      4. Enable GitHub Pages for that repository to get a public URL.
-      5. In WordPress, use an "Custom HTML" block and embed the app using an <iframe> pointing to your GitHub Pages URL.
+      ============================================================================
+      ============================================================================
       
-      Example iFrame code for WordPress:
-      <iframe src="https://your-github-username.github.io/your-repo-name/" style="width: 100%; height: 950px; border: none; display: block; margin: 0 auto; max-width: 672px;"></iframe>
-    -->
+      *** FINAL FIX: YOUR PROJECT IS A "WORKER", NOT A "PAGE" ***
 
-    <!--
-      IMPORTANT CLOUDFLARE PAGES DEPLOYMENT SETTINGS:
-      This is a static HTML file and does not need a build step.
-      In your Cloudflare Pages project settings, navigate to "Settings" > "Build & deployments":
-      1. Framework preset: SET TO "None"
-      2. Build command: LEAVE THIS FIELD COMPLETELY EMPTY
-      3. Build output directory: SET TO "/" (a single forward slash)
-      After saving these settings, any push to your GitHub repo will deploy correctly.
+      Thank you for sharing your settings. The commands "npx wrangler deploy" and
+      "npx wrangler versions upload" prove that your Cloudflare project was
+      accidentally created as a "Cloudflare Worker" project, which is for server
+      code. Your app is a simple static website, so it needs to be a "Pages" project.
+
+      This is why you don't see the "Framework Preset" option. The fix is to
+      delete the old project and create a new one correctly. It only takes 2 minutes.
+
+      HERE ARE THE EXACT STEPS:
+
+      1. DELETE THE OLD PROJECT
+         - Go to your current Cloudflare project.
+         - Go to "Settings" -> "Advanced".
+         - Click "Delete Project".
+
+      2. CREATE A NEW "PAGES" PROJECT
+         - From your Cloudflare Dashboard, click "Workers & Pages" on the left.
+         - Click "Create application" -> Select the "Pages" tab -> "Connect to Git".
+         - Connect and select your GitHub repository again.
+
+      3. CONFIGURE THE BUILD (THE IMPORTANT STEP)
+         - On the "Set up builds and deployments" screen, you will now see the
+           "Framework preset" option.
+         - Set the build configuration as follows:
+           - Framework preset:         Select "None" from the dropdown.
+           - Build command:           LEAVE THIS FIELD EMPTY.
+           - Build output directory:  Set to "/" (a single forward slash).
+
+      4. DEPLOY
+         - Click "Save and Deploy".
+
+      Your new project will now deploy successfully. Pushing this file change
+      will trigger the first build on the new project.
+
+      ============================================================================
+      ============================================================================
     -->
     
     <!-- Adds Tailwind CSS for styling -->
