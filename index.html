@@ -45,20 +45,18 @@
 <body>
     <div id="root"></div>
 
-    <script type="importmap">
-      {
-        "imports": {
-          "react": "https://esm.sh/react@18.2.0",
-          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-          "@emailjs/browser": "https://esm.sh/@emailjs/browser@4.3.3"
-        }
-      }
-    </script>
+    <!--
+      The importmap has been removed and replaced with direct script includes below
+      to make the file compatible with build tools like Vite.
+    -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.3.3/dist/email.min.js"></script>
     
-    <script type="module">
-      import React, { useState, useEffect, useCallback } from 'react';
-      import ReactDOM from 'react-dom/client';
-      import emailjs from '@emailjs/browser';
+    <script>
+    (() => {
+      // Libraries are loaded from the script tags above and are available globally (React, ReactDOM, emailjs).
+      const { useState, useEffect, useCallback } = React;
     
       // --- From types.ts ---
       const ServiceFrequency = {
@@ -963,6 +961,7 @@ Customer Notes:
         const root = ReactDOM.createRoot(rootElement);
         root.render(React.createElement(React.StrictMode, null, React.createElement(App)));
       }
+    })();
     </script>
 </body>
 </html>
