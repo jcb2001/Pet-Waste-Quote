@@ -16,6 +16,16 @@
       Example iFrame code for WordPress:
       <iframe src="https://your-github-username.github.io/your-repo-name/" style="width: 100%; height: 950px; border: none; display: block; margin: 0 auto; max-width: 672px;"></iframe>
     -->
+
+    <!--
+      IMPORTANT CLOUDFLARE PAGES DEPLOYMENT SETTINGS:
+      This is a static HTML file and does not need a build step.
+      In your Cloudflare Pages project settings, navigate to "Settings" > "Build & deployments":
+      1. Framework preset: SET TO "None"
+      2. Build command: LEAVE THIS FIELD COMPLETELY EMPTY
+      3. Build output directory: SET TO "/" (a single forward slash)
+      After saving these settings, any push to your GitHub repo will deploy correctly.
+    -->
     
     <!-- Adds Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
