@@ -149,11 +149,11 @@
         { value: ServiceFrequency.ONE_TIME, label: 'One-Time Clean' },
       ];
     
+      // Updated to remove Small, start with Medium pricing, and use sq ft
       const YARD_SIZE_OPTIONS = [
-        { value: YardSize.SMALL, label: 'Small', description: '< 1/8 acre' },
-        { value: YardSize.MEDIUM, label: 'Medium', description: '1/8-1/4 acre' },
-        { value: YardSize.LARGE, label: 'Large', description: '1/4-1/2 acre' },
-        { value: YardSize.EXTRA_LARGE, label: 'X-Large', description: '> 1/2 acre' },
+        { value: YardSize.MEDIUM, label: '< 10,890 sq ft', description: 'Standard Lot' },
+        { value: YardSize.LARGE, label: '10,890 - 21,780 sq ft', description: 'Large Lot' },
+        { value: YardSize.EXTRA_LARGE, label: '> 21,780 sq ft', description: 'Estate' },
       ];
     
       // --- From components/Spinner.tsx ---
@@ -690,9 +690,9 @@
           React.createElement('div', null,
             React.createElement('h3', {
               className: 'block text-lg font-semibold text-slate-800 mb-3'
-            }, '2. What is your yard size?'),
+            }, '2. What is your lot size?'),
             React.createElement('div', {
-                className: 'grid grid-cols-2 md:grid-cols-4 gap-3'
+                className: 'grid grid-cols-1 sm:grid-cols-3 gap-3'
               },
               YARD_SIZE_OPTIONS.map(option => React.createElement('label', {
                   key: option.value,
@@ -783,7 +783,7 @@
       const App = () => {
         const initialFormData = {
           numDogs: 1,
-          yardSize: YardSize.SMALL,
+          yardSize: YardSize.MEDIUM, // Default changed to Medium
           frequency: ServiceFrequency.ONCE_A_WEEK,
         };
         const [formData, setFormData] = useState(initialFormData);
